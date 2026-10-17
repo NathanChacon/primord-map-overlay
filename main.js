@@ -330,7 +330,7 @@ function createWindow() {
           updateMapPageClasses(isMapPage);
           if (isMapPage === previousMapPageState) return;
           previousMapPageState = isMapPage;
-          window.overlayControls.setMapPage(isMapPage);
+          window.overlayControls.reportMapPageState(isMapPage);
         }
 
         function findMapInstanceInValue(root, mapElement) {
