@@ -4,6 +4,7 @@ const {
   globalShortcut,
   session,
   ipcMain,
+  screen,
 } = require("electron");
 
 const path = require("path");
@@ -88,12 +89,14 @@ function applyWindowShape(showCircle = true) {
 }
 
 function createWindow() {
+  const workArea = screen.getPrimaryDisplay().workArea;
+
   mapWindow = new BrowserWindow({
     width: MAP_SIZE,
     height: WINDOW_HEIGHT,
     icon: path.join(__dirname, "assets", "icon.png"),
-    x: 20,
-    y: 20,
+    x: workArea.x + workArea.width - MAP_SIZE - 20,
+    y: workArea.y + 20,
 
     frame: false,
     transparent: true,
