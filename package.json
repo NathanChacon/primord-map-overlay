@@ -1,0 +1,21 @@
+{
+  "name": "primord-overlay",
+  "version": "1.0.0",
+  "productName": "Primord Map Overlay",
+  "author": "Primord Overlay Community",
+  "description": "Primord live map overlay for The Isle Evrima",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "package": "electron-forge package",
+    "make": "electron-forge make"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "^7.11.2",
+    "@electron-forge/maker-squirrel": "^7.11.2",
+    "electron": "^44.0.0"
+  }
+}
