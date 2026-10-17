@@ -4,9 +4,15 @@ Aplicativo de sobreposição do mapa do Primord para The Isle: Evrima.
 
 ## Instalação
 
-Baixe `PrimordMapSetup.exe` na página **Releases** do GitHub e execute o instalador. O aplicativo precisa de conexão com a internet para abrir o painel do Primord.
+Baixe `PrimordMapSetup.exe` na página [Releases](https://github.com/NathanChacon/primord-map-overlay/releases) do GitHub e execute o instalador. O aplicativo precisa de conexão com a internet para abrir o painel do Primord.
 
-Como o instalador ainda não tem assinatura de código, o Windows pode exibir um aviso de editor desconhecido durante a instalação.
+### Aviso do Microsoft Defender SmartScreen
+
+Este aplicativo ainda não tem assinatura de código. Por isso, o Windows pode exibir a mensagem **“O Windows protegeu o computador”** e indicar **“Fornecedor desconhecido”** ao abrir o instalador. Isso acontece porque o Windows não consegue confirmar a identidade do editor; não significa, por si só, que o arquivo contenha um vírus.
+
+Se você baixou `PrimordMapSetup.exe` diretamente da página oficial de [Releases](https://github.com/NathanChacon/primord-map-overlay/releases) e deseja continuar, na tela do SmartScreen clique em **Mais informações** e depois em **Executar assim mesmo**. Se o arquivo veio de outro lugar, não o execute.
+
+Uma assinatura de código permitiria identificar o editor e ajudaria o Windows a construir reputação para as versões do aplicativo. Mesmo com assinatura, o SmartScreen ainda pode avisar sobre versões novas até que elas ganhem reputação. No momento, o instalador não é assinado.
 
 ## Atalhos
 
