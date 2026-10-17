@@ -28,3 +28,5 @@ npm run make
 O instalador do Windows é gerado em `out/make/squirrel.windows/x64`.
 
 Para publicar uma versão pelo GitHub Actions, atualize a versão em `package.json` e `package-lock.json`, envie as alterações e crie uma tag correspondente (por exemplo, versão `1.0.1` com tag `v1.0.1`). O fluxo gera o instalador do Windows e cria uma Release com os arquivos para download.
+
+<img width="442" height="478" alt="Captura de tela 2026-10-17 000821" src="https://github.com/user-attachments/assets/92eed83e-8b84-45e1-a976-9d89afa5436c" />
