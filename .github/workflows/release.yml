@@ -54,4 +54,4 @@ jobs:
         run: |
           $artifacts = Get-ChildItem "release-assets" -File | ForEach-Object FullName
           if (-not $artifacts) { throw "No Windows installer files were produced." }
-          gh release create "$env:GITHUB_REF_NAME" $artifacts --generate-notes
+          gh release create "$env:GITHUB_REF_NAME" $artifacts --generate-notes --repo "$env:GITHUB_REPOSITORY"
