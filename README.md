@@ -2,6 +2,9 @@
 
 Aplicativo de sobreposição do mapa do Primord para The Isle: Evrima.
 
+<img width="1919" height="1079" alt="Captura de tela 2026-10-17 014629" src="https://github.com/user-attachments/assets/0a3688d9-2865-4d24-a29d-8cb6cfd63085" />
+
+
 ## Instalação
 
 Baixe `PrimordMapSetup.exe` na página [Releases](https://github.com/NathanChacon/primord-map-overlay/releases) do GitHub e execute o instalador. O aplicativo precisa de conexão com a internet para abrir o painel do Primord.
@@ -29,7 +32,7 @@ Uma assinatura de código permitiria identificar o editor e ajudaria o Windows a
 
 ## Acompanhar o jogador
 
-Para centralizar o mapa na sua posição atual, clique no botão com o ícone de jogador na barra superior do mapa. O mapa não acompanha o jogador automaticamente; clique no botão sempre que quiser recentralizar.
+Para centralizar o mapa na sua posição atual, clique no botão com o ícone de jogador na barra superior do mapa. O mapa atualiza em tempo real
 
 ## Desenvolvimento
 
