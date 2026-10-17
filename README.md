@@ -11,7 +11,10 @@ Baixe `PrimordMapSetup.exe` na página [Releases](https://github.com/NathanChaco
 
 ### Primeiro acesso e login
 
-Ao abrir o aplicativo pela primeira vez, faça login na página do Primord que aparece dentro da janela. O app carrega o painel hospedado em `https://painel.primord-oficial.com`; a autenticação da conta é feita pelo próprio site do Primord e, quando necessário, pelo Steam. O Primord Map Overlay não tem um sistema de login próprio nem solicita sua senha separadamente.
+Ao abrir o aplicativo pela primeira vez, faça login na página do Primord que aparece dentro da janela (não precisa sair do app, o login aparece dentro dele). O app carrega o painel hospedado em `https://painel.primord-oficial.com`; a autenticação da conta é feita pelo próprio site do Primord e, quando necessário, pelo Steam. O Primord Map Overlay não tem um sistema de login próprio nem solicita sua senha separadamente.
+
+<img width="398" height="438" alt="Captura de tela 2026-10-17 025842" src="https://github.com/user-attachments/assets/871645a0-c087-490b-839e-d71a4b2e87c3" />
+
 
 O aplicativo funciona como um overlay integrado ao jogo: exibe o mapa do Primord dentro de uma janela circular e adiciona controles como mostrar/ocultar o mapa, interagir com ele e centralizar na posição do jogador.
 
