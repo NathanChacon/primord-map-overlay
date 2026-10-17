@@ -6,6 +6,12 @@ Aplicativo de sobreposição do mapa do Primord para The Isle: Evrima.
 
 Baixe `PrimordMapSetup.exe` na página [Releases](https://github.com/NathanChacon/primord-map-overlay/releases) do GitHub e execute o instalador. O aplicativo precisa de conexão com a internet para abrir o painel do Primord.
 
+### Primeiro acesso e login
+
+Ao abrir o aplicativo pela primeira vez, faça login na página do Primord que aparece dentro da janela. O app carrega o painel hospedado em `https://painel.primord-oficial.com`; a autenticação da conta é feita pelo próprio site do Primord e, quando necessário, pelo Steam. O Primord Map Overlay não tem um sistema de login próprio nem solicita sua senha separadamente.
+
+O aplicativo funciona como um overlay integrado ao jogo: exibe o mapa do Primord dentro de uma janela circular e adiciona controles como mostrar/ocultar o mapa, interagir com ele e centralizar na posição do jogador.
+
 ### Aviso do Microsoft Defender SmartScreen
 
 Este aplicativo ainda não tem assinatura de código. Por isso, o Windows pode exibir a mensagem **“O Windows protegeu o computador”** e indicar **“Fornecedor desconhecido”** ao abrir o instalador. Isso acontece porque o Windows não consegue confirmar a identidade do editor; não significa, por si só, que o arquivo contenha um vírus.
