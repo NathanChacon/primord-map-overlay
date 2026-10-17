@@ -26,7 +26,7 @@ Uma assinatura de código permitiria identificar o editor e ajudaria o Windows a
 
 ## Acompanhar o jogador
 
-Para centralizar o mapa na sua posição atual, clique no botão com o ícone de jogador na barra superior do mapa. O mapa não acompanha o jogador automaticamente; clique no botão sempre que quiser recentralizar.
+Para centralizar o mapa na sua posição atual, clique no botão com o ícone de jogador na barra superior do mapa. O mapa atualiza em tempo real
 
 ## Desenvolvimento
 
