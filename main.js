@@ -301,12 +301,20 @@ function createWindow() {
 
     await mapWindow.webContents.executeJavaScript(`
       (() => {
-        let lastReportedMapPage = null;
-        const reportMapPage = () => {
-          const mapElement = document.querySelector(".pm-leaflet-map");
-          const isMapPage = Boolean(
-            mapElement && mapElement.isConnected && mapElement.getClientRects().length,
-          );
+        const MAP_SELECTOR = ".pm-leaflet-map";
+        const PLAYER_MARKER_SELECTOR =
+          ".leaflet-marker-icon.pm-map-marker-icon.leaflet-zoom-animated.leaflet-interactive";
+        const TITLEBAR_ID = "primord-overlay-titlebar";
+        let previousMapPageState = null;
+
+        function getVisibleMapElement() {
+          const mapElement = document.querySelector(MAP_SELECTOR);
+          return mapElement?.isConnected && mapElement.getClientRects().length
+            ? mapElement
+            : null;
+        }
+
+        function updateMapPageClasses(isMapPage) {
           for (const element of [
             document.documentElement,
             document.body,
@@ -315,145 +323,178 @@ function createWindow() {
           ]) {
             element?.classList.toggle("primord-map-page", isMapPage);
           }
-          if (isMapPage === lastReportedMapPage) return;
-          lastReportedMapPage = isMapPage;
+        }
+
+        function reportMapPageState() {
+          const isMapPage = Boolean(getVisibleMapElement());
+          updateMapPageClasses(isMapPage);
+          if (isMapPage === previousMapPageState) return;
+          previousMapPageState = isMapPage;
           window.overlayControls.setMapPage(isMapPage);
-        };
+        }
 
-        const findMapInstance = (mapElement) => {
-          const findInValue = (root, seen = new Set(), maxDepth = 6) => {
-            const queue = [{ value: root, depth: 0 }];
-            while (queue.length) {
-              const { value, depth } = queue.shift();
-              if (!value || (typeof value !== "object" && typeof value !== "function") || seen.has(value)) continue;
-              seen.add(value);
+        function findMapInstanceInValue(root, mapElement) {
+          const visited = new Set();
+          const pending = [{ value: root, depth: 0 }];
+          const maxDepth = 6;
 
-              if (typeof value.panTo === "function" && typeof value.getContainer === "function") {
-                try {
-                  if (value.getContainer() === mapElement) return value;
-                } catch {}
-              }
-              if (depth >= maxDepth || value instanceof Element || value instanceof Window) continue;
+          while (pending.length) {
+            const { value, depth } = pending.shift();
+            if (
+              !value ||
+              (typeof value !== "object" && typeof value !== "function") ||
+              visited.has(value)
+            ) continue;
+            visited.add(value);
 
-              for (const key of Object.keys(value).slice(0, 50)) {
-                if (["return", "child", "sibling", "alternate", "_events"].includes(key)) continue;
-                queue.push({ value: value[key], depth: depth + 1 });
-              }
+            if (typeof value.panTo === "function" && typeof value.getContainer === "function") {
+              try {
+                if (value.getContainer() === mapElement) return value;
+              } catch {}
             }
-            return null;
-          };
+            if (depth >= maxDepth || value instanceof Element || value instanceof Window) continue;
 
+            for (const key of Object.keys(value).slice(0, 50)) {
+              if (["return", "child", "sibling", "alternate", "_events"].includes(key)) continue;
+              pending.push({ value: value[key], depth: depth + 1 });
+            }
+          }
+          return null;
+        }
+
+        function findMapInstance(mapElement) {
           const fiberKey = Object.keys(mapElement).find((key) =>
             key.startsWith("__reactFiber$") || key.startsWith("__reactInternalInstance$"),
           );
           let fiber = fiberKey ? mapElement[fiberKey] : null;
           while (fiber) {
             for (const value of [fiber.memoizedProps, fiber.memoizedState, fiber.stateNode]) {
-              const map = findInValue(value);
+              const map = findMapInstanceInValue(value, mapElement);
               if (map) return map;
             }
             let dependency = fiber.dependencies?.firstContext;
             while (dependency) {
-              const map = findInValue(dependency.memoizedValue);
+              const map = findMapInstanceInValue(dependency.memoizedValue, mapElement);
               if (map) return map;
               dependency = dependency.next;
             }
             fiber = fiber.return;
           }
           return null;
-        };
+        }
 
-        const focusPlayer = () => {
-          const mapElement = document.querySelector(".pm-leaflet-map");
-          const marker = mapElement
-            ? [...mapElement.querySelectorAll(
-                ".leaflet-marker-icon.pm-map-marker-icon.leaflet-zoom-animated.leaflet-interactive",
-              )].find((element) => element.querySelector(".pm-map-marker--self"))
-            : null;
-          if (!mapElement || !marker || !marker.getClientRects().length) return;
+        function getVisiblePlayerMarker(mapElement) {
+          return [...mapElement.querySelectorAll(PLAYER_MARKER_SELECTOR)].find(
+            (element) =>
+              element.querySelector(".pm-map-marker--self") && element.getClientRects().length,
+          ) ?? null;
+        }
 
+        function getPlayerPosition(map, mapElement, marker) {
+          const markerLayer = map._targets?.[marker._leaflet_id];
+          const markerPosition = markerLayer?.getLatLng?.();
+          if (markerPosition) return markerPosition;
+
+          const mapBounds = mapElement.getBoundingClientRect();
+          const markerBounds = marker.getBoundingClientRect();
+          return map.containerPointToLatLng([
+            markerBounds.left + markerBounds.width / 2 - mapBounds.left,
+            markerBounds.top + markerBounds.height / 2 - mapBounds.top,
+          ]);
+        }
+
+        function centerMapOnPlayer() {
+          const mapElement = getVisibleMapElement();
+          if (!mapElement) return;
+
+          const marker = getVisiblePlayerMarker(mapElement);
+          if (!marker) return;
           const map = findMapInstance(mapElement);
           if (!map) {
             console.warn("Não foi possível localizar o mapa para focar no jogador.");
             return;
           }
 
-          const markerLayer = map._targets?.[marker._leaflet_id];
-          let latLng = markerLayer?.getLatLng?.();
-          if (!latLng) {
-            const mapRect = mapElement.getBoundingClientRect();
-            const markerRect = marker.getBoundingClientRect();
-            latLng = map.containerPointToLatLng([
-              markerRect.left + markerRect.width / 2 - mapRect.left,
-              markerRect.top + markerRect.height / 2 - mapRect.top,
-            ]);
-          }
-          map.panTo(latLng, { animate: true, duration: 0.25 });
-        };
+          map.panTo(getPlayerPosition(map, mapElement, marker), {
+            animate: true,
+            duration: 0.25,
+          });
+        }
 
-        const addTitlebar = () => {
-          if (document.getElementById("primord-overlay-titlebar")) {
-            return;
-          }
+        function createToolbarButton({ id, text, title, onClick }) {
+          const button = document.createElement("button");
+          if (id) button.id = id;
+          if (text) button.textContent = text;
+          button.title = title;
+          button.setAttribute("aria-label", title);
+          button.addEventListener("click", onClick);
+          return button;
+        }
 
+        function createOverlayTitlebar() {
           const bar = document.createElement("div");
-          bar.id = "primord-overlay-titlebar";
+          bar.id = TITLEBAR_ID;
 
           const title = document.createElement("span");
           title.className = "primord-title";
           title.textContent = "F8 MOSTRAR/OCULTAR | CTRL+F8 INTERAGIR";
 
-          const minimize = document.createElement("button");
-          minimize.textContent = "−";
-          minimize.title = "Minimizar mapa";
-          minimize.setAttribute("aria-label", "Minimizar mapa");
-          minimize.addEventListener("click", () => {
-            window.overlayControls.minimize();
+          const focus = createToolbarButton({
+            id: "primord-focus",
+            title: "Centralizar no jogador",
+            onClick: centerMapOnPlayer,
           });
-
-          const focus = document.createElement("button");
-          focus.id = "primord-focus";
           focus.innerHTML = '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="8" r="2.2"/><path d="M7.5 18c.5-3.2 2-5 4.5-5s4 1.8 4.5 5"/></svg>';
-          focus.title = "Centralizar no jogador";
-          focus.setAttribute("aria-label", "Centralizar no jogador");
-          focus.addEventListener("click", focusPlayer);
 
-          const close = document.createElement("button");
-          close.id = "primord-close";
-          close.textContent = "\\u00d7";
-          close.title = "Fechar mapa";
-          close.setAttribute("aria-label", "Fechar mapa");
-          close.addEventListener("click", () => {
-            window.overlayControls.close();
+          const minimize = createToolbarButton({
+            text: "−",
+            title: "Minimizar mapa",
+            onClick: () => window.overlayControls.minimize(),
+          });
+          const close = createToolbarButton({
+            id: "primord-close",
+            text: "\\u00d7",
+            title: "Fechar mapa",
+            onClick: () => window.overlayControls.close(),
           });
 
           bar.append(title, focus, minimize, close);
-          document.body.appendChild(bar);
+          return bar;
+        }
+
+        function addOverlayTitlebar() {
+          if (document.getElementById(TITLEBAR_ID)) return;
+          document.body.appendChild(createOverlayTitlebar());
 
           // Ask Leaflet to recalculate its viewport after layout changes.
           requestAnimationFrame(() => {
             window.dispatchEvent(new Event("resize"));
-            reportMapPage();
+            reportMapPageState();
           });
-        };
-
-        if (document.body) {
-          addTitlebar();
-        } else {
-          document.addEventListener(
-            "DOMContentLoaded",
-            addTitlebar,
-            { once: true }
-          );
         }
 
-        const observer = new MutationObserver(reportMapPage);
-        observer.observe(document.documentElement, {
-          childList: true,
-          subtree: true,
-        });
-        reportMapPage();
-        window.setInterval(reportMapPage, 500);
+        function startMapPageDetection() {
+          const observer = new MutationObserver(reportMapPageState);
+          observer.observe(document.documentElement, {
+            childList: true,
+            subtree: true,
+          });
+          reportMapPageState();
+          window.setInterval(reportMapPageState, 500);
+        }
+
+        function initializeOverlayPage() {
+          addOverlayTitlebar();
+          startMapPageDetection();
+        }
+
+        if (document.body) {
+          initializeOverlayPage();
+        } else {
+          document.addEventListener("DOMContentLoaded", initializeOverlayPage, {
+            once: true,
+          });
+        }
       })();
     `);
 
