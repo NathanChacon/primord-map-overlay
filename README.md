@@ -25,18 +25,28 @@ Uma assinatura de código permitiria identificar o editor e ajudaria o Windows a
 
 ## Atalhos
 
-- **F8**: mostrar ou ocultar o mapa.
+- **F8**: minimizar o overlay para a barra de tarefas ou restaurá-lo.
 - **Ctrl+F8**: alternar a interação com o mapa. A interação começa habilitada quando o aplicativo é aberto.
 - **F9**: recarregar o mapa.
 - **Ctrl+Shift+F8**: apagar os dados salvos da sessão do Primord.
 
 ## Acompanhar o jogador
 
-Para centralizar o mapa na sua posição atual, clique no botão com o ícone de jogador na barra superior do mapa. O mapa atualiza em tempo real
+Para centralizar o mapa na sua posição atual, clique no botão com o ícone de jogador na barra superior do mapa. O mapa atualiza em tempo real.
 
 ## Mostrar ou ocultar a barra
 
-Clique no botão com a seta para cima na barra para ocultá-la e deixar mais espaço livre sobre o jogo. Para mostrar os controles novamente, clique no pequeno botão de menu flutuante no topo do overlay. O mapa continua visível enquanto a barra está recolhida.
+Clique no botão de olho riscado, à direita da barra, para ocultá-la e deixar mais espaço livre sobre o jogo. Para mostrar os controles novamente, clique no botão de olho no canto superior direito, fora do círculo do mapa. O mapa continua visível enquanto a barra está recolhida.
+
+## Estrutura do projeto
+
+- `main.js`: inicialização do Electron, criação da janela e ciclo de vida do aplicativo.
+- `preload.js`: ponte segura entre os controles da página e o processo principal do Electron.
+- `overlay-page.js`: controles inseridos na página do Primord, detecção do mapa e foco no jogador.
+- `overlay-styles.js`: estilos injetados para o mapa, a barra e os controles do overlay.
+- `ipc-handlers.js`: listeners IPC e validação de quem pode solicitar ações da janela.
+- `navigation-rules.js`: regras de navegação, redirecionamento e login pelo Steam.
+- `shortcuts.js`: registro e limpeza dos atalhos globais.
 
 ## Desenvolvimento
 
@@ -50,6 +60,6 @@ npm run make
 
 O instalador do Windows é gerado em `out/make/squirrel.windows/x64`.
 
-Para publicar uma versão pelo GitHub Actions, atualize a versão em `package.json` e `package-lock.json`, envie as alterações e crie uma tag correspondente (por exemplo, versão `1.0.2` com tag `v1.0.2`). O fluxo gera o instalador do Windows e cria uma Release com os arquivos para download.
+Para publicar uma versão pelo GitHub Actions, atualize a versão em `package.json` e `package-lock.json`, atualize `CHANGELOG.md`, envie as alterações e crie uma tag correspondente (por exemplo, versão `1.1.0` com tag `v1.1.0`). O fluxo gera o instalador do Windows e cria uma Release com os arquivos para download. Use as notas de `CHANGELOG.md` como base para a descrição da Release no GitHub.
 
 <img width="442" height="478" alt="Captura de tela 2026-10-17 000821" src="https://github.com/user-attachments/assets/92eed83e-8b84-45e1-a976-9d89afa5436c" />
