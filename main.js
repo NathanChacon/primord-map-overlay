@@ -10,17 +10,21 @@ const {
 const path = require("path");
 
 const MAP_URL = "https://painel.primord-oficial.com/map?serverId=default";
-const MAP_ORIGIN = new URL(MAP_URL).origin;
-const STEAM_AUTH_ORIGINS = new Set([
-  "https://steamcommunity.com",
-  "https://store.steampowered.com",
-]);
 
 const PARTITION = "persist:primord";
 
 const MAP_SIZE = 400;
 const TITLEBAR_HEIGHT = 36;
 const WINDOW_HEIGHT = MAP_SIZE + TITLEBAR_HEIGHT;
+
+const { getOverlayStyles } = require("./overlay-styles");
+const { overlayPageScript } = require("./overlay-page");
+const { registerOverlayIpcHandlers } = require("./ipc-handlers");
+const { createNavigationRules } = require("./navigation-rules");
+const { registerGlobalShortcuts } = require("./shortcuts");
+
+const { isAllowedPrimordUrl, configurePrimordWindow } =
+  createNavigationRules(MAP_URL);
 
 let mapWindow = null;
 let clickThrough = false;
@@ -119,45 +123,7 @@ function createWindow() {
     },
   });
 
-  // Steam OpenID runs in a separate window. It shares the app's session so
-  // Steam cookies and the Primord callback are available, while keeping the
-  // overlay's own top-level page restricted to Primord.
-  mapWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (!isAllowedSteamAuthUrl(url)) return { action: "deny" };
-
-    return {
-      action: "allow",
-      overrideBrowserWindowOptions: {
-        parent: mapWindow,
-        width: 900,
-        height: 700,
-        frame: true,
-        resizable: true,
-        autoHideMenuBar: true,
-        webPreferences: {
-          partition: PARTITION,
-          nodeIntegration: false,
-          contextIsolation: true,
-          sandbox: true,
-        },
-      },
-    };
-  });
-  mapWindow.webContents.on("will-navigate", (event, url) => {
-    if (!isAllowedAuthFlowUrl(url)) event.preventDefault();
-  });
-  mapWindow.webContents.on("will-redirect", (event, url) => {
-    if (!isAllowedAuthFlowUrl(url)) event.preventDefault();
-  });
-  mapWindow.webContents.on("did-create-window", (authWindow) => {
-    authWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
-    authWindow.webContents.on("will-navigate", (event, url) => {
-      if (!isAllowedAuthFlowUrl(url)) event.preventDefault();
-    });
-    authWindow.webContents.on("will-redirect", (event, url) => {
-      if (!isAllowedAuthFlowUrl(url)) event.preventDefault();
-    });
-  });
+  configurePrimordWindow(mapWindow, PARTITION);
 
   applyWindowShape(false);
   keepOverlayOnTop();
@@ -172,331 +138,11 @@ function createWindow() {
     // Each page load starts square; the renderer reports when its map is ready.
     applyWindowShape(false);
 
-    await mapWindow.webContents.insertCSS(`
-      html,
-      body,
-      #root,
-      #app {
-        margin: 0 !important;
-        padding: 0 !important;
-        width: 100% !important;
-        height: 100% !important;
-        overflow: auto !important;
-        background: transparent !important;
-      }
+    await mapWindow.webContents.insertCSS(
+      getOverlayStyles({ mapSize: MAP_SIZE, titlebarHeight: TITLEBAR_HEIGHT }),
+    );
 
-      .primord-map-page {
-        overflow: hidden !important;
-      }
-
-      .primord-map-page::-webkit-scrollbar {
-        display: none !important;
-      }
-
-      /* Keep the map below the title bar. */
-      .pm-leaflet-map {
-        position: fixed !important;
-        left: 0 !important;
-        top: ${TITLEBAR_HEIGHT}px !important;
-        width: ${MAP_SIZE}px !important;
-        height: ${MAP_SIZE}px !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        overflow: hidden !important;
-        outline: none !important;
-      }
-
-      /* Hide the site's surrounding panels. */
-      .pm-map-panel-shell,
-      .pm-shell-topbar,
-      .pm-shell-bottom-nav,
-      .pm-map-live-pill,
-      .pm-shell-sidebar-spacer {
-        display: none !important;
-      }
-
-      /* Optional: hide the map's corner controls. */
-      .leaflet-control-container {
-        display: none !important;
-      }
-
-      /* Our custom draggable title bar. */
-      #primord-overlay-titlebar {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: ${MAP_SIZE}px;
-        height: ${TITLEBAR_HEIGHT}px;
-        box-sizing: border-box;
-        z-index: 2147483647;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 0 10px;
-        color: #f4f6fa;
-        background: #20242b;
-        border-bottom: 1px solid #454b55;
-        font: 600 12px/1 Arial, sans-serif;
-        -webkit-app-region: drag;
-        user-select: none;
-      }
-
-      #primord-overlay-titlebar .primord-title {
-        flex: 1;
-        min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        font-size: 9px;
-        letter-spacing: 0;
-        white-space: nowrap;
-      }
-
-      #primord-overlay-titlebar button {
-        -webkit-app-region: no-drag;
-        border: 0;
-        border-radius: 5px;
-        width: 26px;
-        height: 25px;
-        padding: 0;
-        color: white;
-        background: #3b414c;
-        font: 18px/1 Arial, sans-serif;
-        cursor: pointer;
-      }
-
-      #primord-overlay-titlebar button:hover {
-        background: #596273;
-      }
-
-      #primord-overlay-titlebar #primord-close:hover {
-        background: #b83d48;
-      }
-
-
-      #primord-resize-handle {
-            position: fixed;
-            right: 5px;
-            bottom: 5px;
-            width: 22px;
-            height: 22px;
-            z-index: 2147483647;
-            -webkit-app-region: no-drag;
-            cursor: nwse-resize;
-            border-radius: 50%;
-            background: rgba(25, 29, 36, 0.9);
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            box-sizing: border-box;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font: bold 15px Arial, sans-serif;
-            user-select: none;
-}
-
-     #primord-resize-handle:hover {
-        background: #596273;
-    }
-    `);
-
-    await mapWindow.webContents.executeJavaScript(`
-      (() => {
-        const MAP_SELECTOR = ".pm-leaflet-map";
-        const PLAYER_MARKER_SELECTOR =
-          ".leaflet-marker-icon.pm-map-marker-icon.leaflet-zoom-animated.leaflet-interactive";
-        const TITLEBAR_ID = "primord-overlay-titlebar";
-        let previousMapPageState = null;
-
-        function getVisibleMapElement() {
-          const mapElement = document.querySelector(MAP_SELECTOR);
-          return mapElement?.isConnected && mapElement.getClientRects().length
-            ? mapElement
-            : null;
-        }
-
-        function updateMapPageClasses(isMapPage) {
-          for (const element of [
-            document.documentElement,
-            document.body,
-            document.getElementById("root"),
-            document.getElementById("app"),
-          ]) {
-            element?.classList.toggle("primord-map-page", isMapPage);
-          }
-        }
-
-        function reportMapPageState() {
-          const isMapPage = Boolean(getVisibleMapElement());
-          updateMapPageClasses(isMapPage);
-          if (isMapPage === previousMapPageState) return;
-          previousMapPageState = isMapPage;
-          window.overlayControls.reportMapPageState(isMapPage);
-        }
-
-        function findMapInstanceInValue(root, mapElement) {
-          const visited = new Set();
-          const pending = [{ value: root, depth: 0 }];
-          const maxDepth = 6;
-
-          while (pending.length) {
-            const { value, depth } = pending.shift();
-            if (
-              !value ||
-              (typeof value !== "object" && typeof value !== "function") ||
-              visited.has(value)
-            ) continue;
-            visited.add(value);
-
-            if (typeof value.panTo === "function" && typeof value.getContainer === "function") {
-              try {
-                if (value.getContainer() === mapElement) return value;
-              } catch {}
-            }
-            if (depth >= maxDepth || value instanceof Element || value instanceof Window) continue;
-
-            for (const key of Object.keys(value).slice(0, 50)) {
-              if (["return", "child", "sibling", "alternate", "_events"].includes(key)) continue;
-              pending.push({ value: value[key], depth: depth + 1 });
-            }
-          }
-          return null;
-        }
-
-        function findMapInstance(mapElement) {
-          const fiberKey = Object.keys(mapElement).find((key) =>
-            key.startsWith("__reactFiber$") || key.startsWith("__reactInternalInstance$"),
-          );
-          let fiber = fiberKey ? mapElement[fiberKey] : null;
-          while (fiber) {
-            for (const value of [fiber.memoizedProps, fiber.memoizedState, fiber.stateNode]) {
-              const map = findMapInstanceInValue(value, mapElement);
-              if (map) return map;
-            }
-            let dependency = fiber.dependencies?.firstContext;
-            while (dependency) {
-              const map = findMapInstanceInValue(dependency.memoizedValue, mapElement);
-              if (map) return map;
-              dependency = dependency.next;
-            }
-            fiber = fiber.return;
-          }
-          return null;
-        }
-
-        function getVisiblePlayerMarker(mapElement) {
-          return [...mapElement.querySelectorAll(PLAYER_MARKER_SELECTOR)].find(
-            (element) =>
-              element.querySelector(".pm-map-marker--self") && element.getClientRects().length,
-          ) ?? null;
-        }
-
-        function getPlayerPosition(map, mapElement, marker) {
-          const markerLayer = map._targets?.[marker._leaflet_id];
-          const markerPosition = markerLayer?.getLatLng?.();
-          if (markerPosition) return markerPosition;
-
-          const mapBounds = mapElement.getBoundingClientRect();
-          const markerBounds = marker.getBoundingClientRect();
-          return map.containerPointToLatLng([
-            markerBounds.left + markerBounds.width / 2 - mapBounds.left,
-            markerBounds.top + markerBounds.height / 2 - mapBounds.top,
-          ]);
-        }
-
-        function centerMapOnPlayer() {
-          const mapElement = getVisibleMapElement();
-          if (!mapElement) return;
-
-          const marker = getVisiblePlayerMarker(mapElement);
-          if (!marker) return;
-          const map = findMapInstance(mapElement);
-          if (!map) {
-            console.warn("Não foi possível localizar o mapa para focar no jogador.");
-            return;
-          }
-
-          map.panTo(getPlayerPosition(map, mapElement, marker), {
-            animate: true,
-            duration: 0.25,
-          });
-        }
-
-        function createToolbarButton({ id, text, title, onClick }) {
-          const button = document.createElement("button");
-          if (id) button.id = id;
-          if (text) button.textContent = text;
-          button.title = title;
-          button.setAttribute("aria-label", title);
-          button.addEventListener("click", onClick);
-          return button;
-        }
-
-        function createOverlayTitlebar() {
-          const bar = document.createElement("div");
-          bar.id = TITLEBAR_ID;
-
-          const title = document.createElement("span");
-          title.className = "primord-title";
-          title.textContent = "F8 MOSTRAR/OCULTAR | CTRL+F8 INTERAGIR";
-
-          const focus = createToolbarButton({
-            id: "primord-focus",
-            title: "Centralizar no jogador",
-            onClick: centerMapOnPlayer,
-          });
-          focus.innerHTML = '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="8" r="2.2"/><path d="M7.5 18c.5-3.2 2-5 4.5-5s4 1.8 4.5 5"/></svg>';
-
-          const minimize = createToolbarButton({
-            text: "−",
-            title: "Minimizar mapa",
-            onClick: () => window.overlayControls.minimize(),
-          });
-          const close = createToolbarButton({
-            id: "primord-close",
-            text: "\\u00d7",
-            title: "Fechar mapa",
-            onClick: () => window.overlayControls.close(),
-          });
-
-          bar.append(title, focus, minimize, close);
-          return bar;
-        }
-
-        function addOverlayTitlebar() {
-          if (document.getElementById(TITLEBAR_ID)) return;
-          document.body.appendChild(createOverlayTitlebar());
-
-          // Ask Leaflet to recalculate its viewport after layout changes.
-          requestAnimationFrame(() => {
-            window.dispatchEvent(new Event("resize"));
-            reportMapPageState();
-          });
-        }
-
-        function startMapPageDetection() {
-          const observer = new MutationObserver(reportMapPageState);
-          observer.observe(document.documentElement, {
-            childList: true,
-            subtree: true,
-          });
-          reportMapPageState();
-          window.setInterval(reportMapPageState, 500);
-        }
-
-        function initializeOverlayPage() {
-          addOverlayTitlebar();
-          startMapPageDetection();
-        }
-
-        if (document.body) {
-          initializeOverlayPage();
-        } else {
-          document.addEventListener("DOMContentLoaded", initializeOverlayPage, {
-            once: true,
-          });
-        }
-      })();
-    `);
+    await mapWindow.webContents.executeJavaScript(overlayPageScript);
 
     keepOverlayOnTop();
   });
@@ -509,60 +155,11 @@ function createWindow() {
   });
 }
 
-// Only accept these requests from the expected Primord website.
-function isPrimordSender(event) {
-  try {
-    return (
-      event.sender === mapWindow?.webContents &&
-      event.senderFrame === event.sender.mainFrame &&
-      isAllowedPrimordUrl(event.senderFrame.url)
-    );
-  } catch {
-    return false;
-  }
-}
-
-function isAllowedPrimordUrl(url) {
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === "https:" && parsed.origin === MAP_ORIGIN;
-  } catch {
-    return false;
-  }
-}
-
-function isAllowedSteamAuthUrl(url) {
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === "https:" && STEAM_AUTH_ORIGINS.has(parsed.origin);
-  } catch {
-    return false;
-  }
-}
-
-function isAllowedAuthFlowUrl(url) {
-  return isAllowedPrimordUrl(url) || isAllowedSteamAuthUrl(url);
-}
-
-ipcMain.on("overlay:map-page", (event, isMapPage) => {
-  if (!isPrimordSender(event)) return;
-  if (mapWindow && !mapWindow.isDestroyed()) {
-    applyWindowShape(isMapPage === true);
-  }
-});
-
-ipcMain.on("overlay:minimize", (event) => {
-  if (!isPrimordSender(event)) return;
-  if (mapWindow && !mapWindow.isDestroyed()) {
-    mapWindow.minimize();
-  }
-});
-
-ipcMain.on("overlay:close", (event) => {
-  if (!isPrimordSender(event)) return;
-  if (mapWindow && !mapWindow.isDestroyed()) {
-    mapWindow.close();
-  }
+registerOverlayIpcHandlers({
+  ipcMain,
+  getMapWindow: () => mapWindow,
+  applyWindowShape,
+  isAllowedPrimordUrl,
 });
 
 app.whenReady().then(() => {
@@ -574,60 +171,48 @@ app.whenReady().then(() => {
   createWindow();
   setClickThrough(false);
 
-  // F8: toggle the overlay's visibility.
-  globalShortcut.register("F8", () => {
-    if (!mapWindow || mapWindow.isDestroyed()) return;
+  registerGlobalShortcuts({
+    app,
+    globalShortcut,
+    getMapWindow: () => mapWindow,
+    keepOverlayOnTop,
+    toggleMapInteraction: () => {
+      if (!mapWindow || mapWindow.isDestroyed()) return;
+      setClickThrough(!clickThrough);
+      console.log(
+        clickThrough
+          ? "Interação com o mapa desativada."
+          : "Interação com o mapa ativada.",
+      );
+    },
+    reloadMap: () => {
+      if (mapWindow && !mapWindow.isDestroyed()) {
+        mapWindow.webContents.reload();
+      }
+    },
+    clearPrimordSession: async () => {
+      const primordSession = session.fromPartition(PARTITION);
 
-    if (mapWindow.isVisible()) {
-      mapWindow.hide();
-    } else {
-      keepOverlayOnTop();
-      mapWindow.show();
-    }
+      await primordSession.clearStorageData({
+        storages: [
+          "cookies",
+          "localstorage",
+          "indexdb",
+          "serviceworkers",
+          "cachestorage",
+        ],
+      });
+
+      await primordSession.clearCache();
+
+      if (mapWindow && !mapWindow.isDestroyed()) {
+        await mapWindow.loadURL(MAP_URL);
+        keepOverlayOnTop();
+      }
+
+      console.log("Dados da sessão Primord apagados.");
+    },
   });
-
-  // Ctrl+F8: toggle map interaction until the shortcut is pressed again.
-  globalShortcut.register("Control+F8", () => {
-    if (!mapWindow || mapWindow.isDestroyed()) return;
-
-    setClickThrough(!clickThrough);
-    console.log(clickThrough ? "Interação com o mapa desativada." : "Interação com o mapa ativada.");
-  });
-
-  // F9: reload the map.
-  globalShortcut.register("F9", () => {
-    if (mapWindow && !mapWindow.isDestroyed()) {
-      mapWindow.webContents.reload();
-    }
-  });
-
-  // Ctrl+Shift+F8: clear the saved Primord session.
-  globalShortcut.register("Control+Shift+F8", async () => {
-    const primordSession = session.fromPartition(PARTITION);
-
-    await primordSession.clearStorageData({
-      storages: [
-        "cookies",
-        "localstorage",
-        "indexdb",
-        "serviceworkers",
-        "cachestorage",
-      ],
-    });
-
-    await primordSession.clearCache();
-
-    if (mapWindow && !mapWindow.isDestroyed()) {
-      await mapWindow.loadURL(MAP_URL);
-      keepOverlayOnTop();
-    }
-
-    console.log("Dados da sessão Primord apagados.");
-  });
-});
-
-app.on("will-quit", () => {
-  globalShortcut.unregisterAll();
 });
 
 app.on("window-all-closed", () => {

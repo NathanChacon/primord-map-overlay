@@ -34,6 +34,10 @@ Uma assinatura de código permitiria identificar o editor e ajudaria o Windows a
 
 Para centralizar o mapa na sua posição atual, clique no botão com o ícone de jogador na barra superior do mapa. O mapa atualiza em tempo real
 
+## Mostrar ou ocultar a barra
+
+Clique no botão com a seta para cima na barra para ocultá-la e deixar mais espaço livre sobre o jogo. Para mostrar os controles novamente, clique no pequeno botão de menu flutuante no topo do overlay. O mapa continua visível enquanto a barra está recolhida.
+
 ## Desenvolvimento
 
 Requer Node.js 22.12 ou superior.
