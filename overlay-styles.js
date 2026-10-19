@@ -12,13 +12,6 @@ const PAGE_LAYOUT_CSS = `
     background: transparent !important;
   }
 
-  .primord-map-page {
-    overflow: hidden !important;
-  }
-
-  .primord-map-page::-webkit-scrollbar {
-    display: none !important;
-  }
 `;
 
 const MAP_VIEWPORT_CSS = `
@@ -52,8 +45,12 @@ const PRIMORD_PAGE_CHROME_CSS = `
     display: none !important;
   }
 
-  .pm-shell-main {
+  .pm-shell-main.primord-map-page {
     overflow: hidden !important;
+  }
+
+  .pm-shell-main.primord-map-page::-webkit-scrollbar {
+    display: none !important;
   }
 `;
 

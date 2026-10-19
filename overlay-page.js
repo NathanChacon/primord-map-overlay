@@ -14,20 +14,15 @@ const overlayPageScript = `
             : null;
         }
 
-        function updateMapPageClasses(isMapPage) {
-          for (const element of [
-            document.documentElement,
-            document.body,
-            document.getElementById("root"),
-            document.getElementById("app"),
-          ]) {
-            element?.classList.toggle("primord-map-page", isMapPage);
-          }
+        function updateMapContainerClass(isMapPage) {
+          document
+            .querySelector(".pm-shell-main")
+            ?.classList.toggle("primord-map-page", isMapPage);
         }
 
         function reportMapPageState() {
           const isMapPage = Boolean(getVisibleMapElement());
-          updateMapPageClasses(isMapPage);
+          updateMapContainerClass(isMapPage);
           const toolbar = document.getElementById(TITLEBAR_ID);
           document.documentElement.classList.toggle(
             "primord-toolbar-collapsed",
